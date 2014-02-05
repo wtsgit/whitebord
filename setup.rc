@@ -1,0 +1,215 @@
+#
+# For bash/ksh setup
+#
+
+if [[ $0 != "-bash" && $0 != "-ksh93" && $0 != "bash" ]] ; then
+	echo "Not in bash/ksh93."
+	exit
+fi
+
+platform=$(uname)
+
+if [[ $platform == FreeBSD ]] ; then
+	alias make98='gmake PROG=$prog_exe OS=$platform'
+	alias make='gmake PROG=$prog_exe OS=$platform USESTD11=1'
+elif [[ $platform == Linux ]] ; then
+	alias make98='make PROG=$prog_exe OS=$platform'
+	alias make='make PROG=$prog_exe OS=$platform USESTD11=1'
+elif [[ $platform == Darwin ]] ; then
+	alias make98='make PROG=$prog_exe OS=$platform'
+	alias makeg98='make CXX=g++ PROG=$prog_exe'
+	alias make='make PROG=$prog_exe OS=$platform USESTD11=1'
+	alias makeg='make CXX=g++ PROG=$prog_exe USESTD11=1'
+fi
+
+alias m=make
+alias m11=make
+alias m98=make98
+
+alias edit='vim ${prog_src}'
+alias e=edit
+
+alias edit_hdr='vim ${prog_hdr}'
+alias eh=edit_hdr
+
+alias r=run
+
+function code {
+	if [[ $1 == "-c" ]] ; then
+		unset prog_exe
+		unset prog_src
+		unset prog_hdr
+		unset prog_src_suffix
+		unset prog_hdr_suffix
+		return
+	fi
+
+	local skeleton=yes
+	if [[ $1 == "-n" ]] ; then
+		skeleton=no
+		shift
+	fi
+
+	if [[ -z $1 ]] ; then
+		return
+	fi
+
+	if [[ $(basename $(pwd)) == mono ]] ; then
+		prog_src_suffix=cs
+	fi
+
+	if [[ $(basename $(pwd)) == objc ]] ; then
+		prog_src_suffix=m
+	fi
+
+	bname=$(basename $(pwd))
+	if [[ ${bname##*_} == cpp ]] ; then
+		prog_src_suffix=cpp
+	fi
+
+	########################################################################
+	#
+	# For C++ code.
+	#
+	# (a) I type 
+	#     "code prog-test.cpp"
+	# or 
+	#     "code prog.h"
+	#
+	# The file "prog-test.cpp" should be the compiler input. If it does
+	# not exist, create it.
+	#
+	# The file "prog.h" should be the editor input. If it does not exit,
+	# create it.
+	#
+	# (b) I type
+	#     "code prog.cpp"
+	#
+	# The file "prog.cpp" should be the compiler and editor input. If it
+	# does not exist, create it.
+	#
+	# (c) I type
+	#     "code prog" without suffix.
+	#
+	# If "prog.h" or "prog-test.cpp" exits, then "prog.h" should
+	# be the editor input and "prog-test.cpp" should be the compiler
+	# input. If "prog-test.cpp" does not exit, create it. If "prog.h"
+	# does not exit, create it.
+	#
+	# Otherwise, if "prog.cpp" exits, then it should be the editor input
+	# and the compiler input.
+	# 
+	# If none of them exists, then create "prog.cpp" and make it the
+	# editor input and the compiler input. 
+	#
+	########################################################################
+
+	#
+	# C++ code has some special cases as noted above.
+	#
+	local prog=""
+	local use_hdr=no
+	if [[ $prog_src_suffix == cpp ]] ; then
+		local tail_test1=${1##*.} # prog.h prog.cpp
+		local tail_test2=${1##*-} # prog-test.cpp
+		if [[ $tail_test1 == "h" && $1 != "h" ]] ; then
+			use_hdr=yes
+			prog=${1%.h}-test
+			prog_src=${1%.h}-test.cpp
+			prog_hdr=$1
+		elif [[ $tail_test2 == "test.cpp" && $1 != "test.cpp" ]] ;
+		then
+			use_hdr=yes
+			prog=${1%.cpp}
+			prog_src=$1
+			prog_hdr=${1%-test.cpp}.h
+		elif [[ $tail_test1 == "cpp" && $1 != "cpp" ]] ; then
+			use_hdr=no
+			prog=${1%.cpp}
+			prog_src=$1
+		elif [[ -f ${1}.h || -f ${1}-test.cpp ]] ; then
+			use_hdr=yes
+			prog=${1}-test
+			prog_src=${1}-test.cpp
+			prog_hdr=${1}.h
+		else
+			use_hdr=no
+			prog=$1
+			prog_src=${1}.cpp
+		fi
+	#
+	# For ObjC and C# code, we only handle a single file so far.
+	#
+	else
+		prog_src=$1
+		local prog=${prog_src%.*}
+		if [[ $prog == $1 ]] ; then
+			prog_src=${1}.${prog_src_suffix}
+		fi
+	fi
+
+	if [[ $prog_src_suffix == cs ]] ; then
+		prog_exe=${prog}.exe
+	else
+		prog_exe=$prog
+	fi
+
+	if [[ $skeleton == no ]] ; then
+		return
+	fi
+	
+	if [[ $prog_src_suffix == cpp ]] ; then
+		if [[ ! -e $prog_src && ! -L $prog_src ]] ; then 
+			echo "#include <iostream>" >> $prog_src
+			echo >> $prog_src
+			echo "using namespace std;" >> $prog_src
+			if [[ $use_hdr == yes ]] ; then
+				echo "#include \"${prog_hdr}\"" >> $prog_src
+			fi
+			cat << EOF >> $prog_src
+
+int main()
+{
+        return 0;
+}
+EOF
+		fi
+		if [[ $use_hdr == yes && ! -e $prog_hdr && ! -L $prog_hdr ]] ; then 
+			local prog_uppercase=${prog_hdr%.h}
+			prog_uppercase=$(echo $prog_uppercase | tr 'a-z' 'A-Z')
+			echo "#ifndef __WTS_${prog_uppercase}_H__" >> $prog_hdr
+			echo "#define __WTS_${prog_uppercase}_H__" >> $prog_hdr
+			echo >> $prog_hdr
+			echo "namespace wts {" >> $prog_hdr
+			echo >> $prog_hdr
+			echo "}" >> $prog_hdr
+			echo >> $prog_hdr
+			echo "#endif" >> $prog_hdr
+		fi
+
+	elif [[ $prog_src_suffix == cs ]] ; then
+		if [[ ! -e $prog_src && ! -L $prog_src ]] ; then 
+			cat << EOF > $prog_src
+using System;
+
+class Program {
+	public static void Main()
+	{
+	}
+}
+EOF
+		fi
+	fi
+}
+
+function run {
+	if [[ $prog_src_suffix == cs ]] ; then
+		if [[ -f $prog_exe ]] ; then
+			mono ./$prog_exe $* ;
+		fi
+	else
+		if [[ -f $prog_exe && -x $prog_exe ]] ; then
+			./$prog_exe $* ;
+		fi
+	fi
+}
