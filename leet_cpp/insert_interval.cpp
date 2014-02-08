@@ -34,7 +34,7 @@ public:
 		vector<Interval> rv;
 
 		auto it = intervals.begin();
-		while (it != intervals.end() && it->end+1 < newInterval.start) {
+		while (it != intervals.end() && it->end < newInterval.start) {
 			rv.push_back(*it);
 			++it;
 		}
@@ -44,7 +44,7 @@ public:
 			s = min(s, it->start);
 
 		auto e = newInterval.end;
-		while (it != intervals.end() && !(newInterval.end+1 < it->start)) {
+		while (it != intervals.end() && !(newInterval.end < it->start)) {
 			e = max(e, it->end);
 			++it;
 		}
