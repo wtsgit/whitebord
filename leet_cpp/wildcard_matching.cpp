@@ -32,26 +32,39 @@ using namespace std;
 class Solution {
 public:
 	bool isMatch(const char *s, const char *p) {
+
 		if (s == nullptr || p == nullptr)
 			return false;
-		switch (*p) {
-		case '\0':
-			return !*s;
-		case '?':
-			if (*s)
-				return isMatch(++s, ++p);
-			break;
-		case '*':
-			while (*(p+1) == '*')
+
+		bool after_star = false;
+		while (true) {
+			while (*p && *p == '*') {
 				++p;
-			if (isMatch(s, p+1))
+				after_star = true;
+			}
+			if (after_star && !*p)
 				return true;
-			if (*s)
-				return isMatch(++s, p);
-			break;
-		default:
-			if (*p == *s)
-				return isMatch(++s, ++p);
+			const char *ps = s;
+			const char *pp = p;
+			while (*ps && *pp && *pp != '*' && (*ps == *pp || *pp == '?')) {
+				++ps;
+				++pp;
+			}
+			if (*pp == '*') {
+				p = pp;
+				s = ps;
+				continue;
+			}
+			if (!*pp) {
+				if (!*ps)
+					return true;
+				if (!after_star)
+					break;
+			}
+			else if (!*ps || !after_star) {
+				break;
+			}
+			++s;
 		}
 		return false;
 	}
