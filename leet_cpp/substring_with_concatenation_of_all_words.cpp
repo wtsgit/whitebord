@@ -35,7 +35,6 @@ struct Bucket {
 	size_t start;
 	size_t total_match_count;
 	vector<size_t> match_count;
-	vector<size_t> first_seen;
 
 	void open(size_t n, size_t start_) {
 		in_use = true;
@@ -43,8 +42,6 @@ struct Bucket {
 		total_match_count = 0;
 		match_count.clear();
 		match_count.resize(n, 0);
-		first_seen.clear();
-		first_seen.resize(n, 0);
 	}
 	void close() { in_use = false; }
 	Bucket() : in_use(false) {} 
@@ -72,34 +69,33 @@ public:
 		}
 		Bucket bucket;
 		for (size_t phase = 0; phase < wl; ++phase) {
-			for (size_t i = phase; i+wl-1 < S.size(); ) {
-				auto dit = dict.find(S.substr(i, wl));
-				if (dit == dict.end()) {
+			for (size_t i = phase; i+wl-1 < S.size(); i += wl) {
+				auto dit_i = dict.find(S.substr(i, wl));
+				if (dit_i == dict.end()) {
 					bucket.close();
 				}
 				else {
-					size_t uwid = dit->second.uwid;
+					size_t uwid = dit_i->second.uwid;
 					if (bucket.in_use == false) {
 						bucket.open(nuw, i); // start at i
 					}
-					if (bucket.match_count[uwid] >= dit->second.count) {
-						i = bucket.first_seen[uwid] + wl;
-						bucket.close();
-						continue; // roll back
-					}
-					if (bucket.match_count[uwid] == 0) {
-						bucket.first_seen[uwid] = i;
+					if (bucket.match_count[uwid] >= dit_i->second.count) {
+						for (size_t j = bucket.start; j+wl-1 < i; j += wl) {
+							auto dit_j = dict.find(S.substr(j, wl));
+							bucket.match_count[dit_j->second.uwid]--;
+							bucket.total_match_count--;
+							if (dit_j->second.uwid == uwid) {
+								bucket.start = j+wl;
+								break;
+							}
+						}
 					}
 					bucket.match_count[uwid]++;
 					bucket.total_match_count++;
 					if (bucket.total_match_count == nw) {
 						r.push_back((int)bucket.start);
-						i = bucket.start + wl; // roll back
-						bucket.close();
-						continue;
 					}
 				}
-				i += wl;
 			}
 			bucket.close();
 		}
@@ -121,6 +117,15 @@ int main() {
 	{
 		string S{"aaa"};
 		vector<string> L{"aa", "aa"};
+		Solution s;
+		auto pos = s.findSubstring(S, L);
+		for (auto p : pos)
+			cout << p << " ";
+		cout << endl;
+	}
+	{
+		string S{"aaa"};
+		vector<string> L{"a", "a"};
 		Solution s;
 		auto pos = s.findSubstring(S, L);
 		for (auto p : pos)
