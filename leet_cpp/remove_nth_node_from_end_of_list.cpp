@@ -1,4 +1,8 @@
 /*
+http://oj.leetcode.com/problems/remove-nth-node-from-end-of-list/
+Sat Feb 15 19:45:38 EST 2014
+
+
 Remove Nth Node From End of List
 
 Given a linked list, remove the nth node from the end of list and return its head.
