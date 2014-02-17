@@ -21,26 +21,33 @@ Output: index1=1, index2=2
 
 #include <iostream>
 #include <vector>
+#include <unordered_map>
 
 using namespace std;
 
 class Solution {
 public:
 	vector<int> twoSum(vector<int> &numbers, int target) {
-		vector<int> solution(2);
+		vector<int> solution(2, -1);
 
-		for (int index1 = 0; index1 < numbers.size(); ++index1) {
-			for (int index2 = index1 + 1; index2 < numbers.size(); ++index2) {
-				if (numbers[index1] + numbers[index2] == target) {
-					solution[0] = index1 + 1;
-					solution[1] = index2 + 1;
-					return solution;
+		unordered_map<int, vector<size_t>> mp;
+		for (size_t i = 0; i < numbers.size(); ++i) {
+			mp[numbers[i]].push_back(i);
+		}
+		for (size_t i = 0; i < numbers.size(); ++i) {
+			int expected = target - numbers[i];
+			auto mpit = mp.find(expected);
+			if (mpit != mp.end()) {
+				for (auto index : mpit->second) {
+					if (index != i) {
+						solution[0] = i+1;
+						solution[1] = index+1;
+						return solution;
+					}
 				}
 			}
 		}
 
-		solution[0] = -1;
-		solution[1] = -1;
 		return solution;
 	}
 };
