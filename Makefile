@@ -4,6 +4,8 @@
 %.exe : %.cs
 	mcs $<
 
+CFLAGS=-g -Wall -ansi -pedantic
+
 ifdef USESTD11
 CXXFLAGS=-g -Wall -std=c++11 -pedantic
 else
@@ -12,6 +14,7 @@ endif
 
 ifdef USE32BIT
 CXXFLAGS+=-m32
+CFLAGS+=-m32
 endif
 
 ifeq ($(OS), Darwin)
