@@ -40,7 +40,6 @@ function code {
 		unset prog_src
 		unset prog_hdr
 		unset prog_src_suffix
-		unset prog_hdr_suffix
 		return
 	fi
 
@@ -54,22 +53,35 @@ function code {
 		return
 	fi
 
-	if [[ $(basename $(pwd)) == mono ]] ; then
-		prog_src_suffix=cs
+	prog_src_suffix=${1##*.}
+	if [[ $prog_src_suffix == $1 ]] ; then
+		prog_src_suffix=""
+	elif [[ $prog_src_suffix != c && $prog_src_suffix != cpp && $prog_src_suffix != cs && $prog_src_suffix != m ]]; then
+		prog_src_suffix=""
 	fi
 
-	if [[ $(basename $(pwd)) == objc ]] ; then
-		prog_src_suffix=m
-	fi
+	if [[ -z $prog_src_suffix ]] ; then
+		if [[ $(basename $(pwd)) == mono ]] ; then
+			prog_src_suffix=cs
+		fi
 
-	bname=$(basename $(pwd))
-	if [[ ${bname##*_} == cpp ]] ; then
-		prog_src_suffix=cpp
+		if [[ $(basename $(pwd)) == objc ]] ; then
+			prog_src_suffix=m
+		fi
+
+		bname=$(basename $(pwd))
+		if [[ ${bname##*_} == cpp ]] ; then
+			prog_src_suffix=cpp
+		fi
+
+		if [[ -z $prog_src_suffix ]] ; then
+			prog_src_suffix=c
+		fi
 	fi
 
 	########################################################################
 	#
-	# For C++ code.
+	# For C/C++ code. (Assume .cpp suffix and .c suffix is similar.)
 	#
 	# (a) I type 
 	#     "code prog-test.cpp"
@@ -109,40 +121,46 @@ function code {
 	#
 	local prog=""
 	local use_hdr=no
-	if [[ $prog_src_suffix == cpp ]] ; then
+	if [[ $prog_src_suffix == cpp || $prog_src_suffix == c ]] ; then
 		local tail_test1=${1##*.} # prog.h prog.cpp
 		local tail_test2=${1##*-} # prog-test.cpp
 		if [[ $tail_test1 == "h" && $1 != "h" ]] ; then
+			# xyz.h
 			use_hdr=yes
-			prog=${1%.h}-test
-			prog_src=${1%.h}-test.cpp
+			prog=${1%.*}-test
+			prog_src=${1%.*}-test.${prog_src_suffix}
 			prog_hdr=$1
-		elif [[ $tail_test2 == "test.cpp" && $1 != "test.cpp" ]] ;
-		then
+		elif [[ $tail_test2 == test.${prog_src_suffix} && $1 != test.${prog_src_suffix} ]] ; then
+			# xyz-test.cpp
 			use_hdr=yes
-			prog=${1%.cpp}
+			prog=${1%.*}
 			prog_src=$1
-			prog_hdr=${1%-test.cpp}.h
-		elif [[ $tail_test1 == "cpp" && $1 != "cpp" ]] ; then
+			prog_hdr=${1%-test.${prog_src_suffix}}.h
+		elif [[ $tail_test1 == ${prog_src_suffix} && $1 != ${prog_src_suffix} ]] ; then
+			# xyz.cpp
 			use_hdr=no
-			prog=${1%.cpp}
+			prog=${1%.*}
 			prog_src=$1
-		elif [[ -f ${1}.h || -f ${1}-test.cpp ]] ; then
+			unset prog_hdr
+		elif [[ -f ${1}.h || -f ${1}-test.${prog_src_suffix} ]] ; then
+			# xyz
 			use_hdr=yes
 			prog=${1}-test
-			prog_src=${1}-test.cpp
+			prog_src=${1}-test.${prog_src_suffix}
 			prog_hdr=${1}.h
 		else
+			# xyz
 			use_hdr=no
 			prog=$1
-			prog_src=${1}.cpp
+			prog_src=${1}.${prog_src_suffix}
+			unset prog_hdr
 		fi
 	#
 	# For ObjC and C# code, we only handle a single file so far.
 	#
 	else
 		prog_src=$1
-		local prog=${prog_src%.*}
+		prog=${prog_src%.*}
 		if [[ $prog == $1 ]] ; then
 			prog_src=${1}.${prog_src_suffix}
 		fi
